@@ -1,8 +1,9 @@
 import sys
 import glob
 import errno
+from  collections import defaultdict
 
-globalList={}
+globalList=defaultdict(list)
 def main():
     path = 'C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\pos\\*.txt'
     files = glob.glob(path) # list of path names that matches pathname
@@ -14,9 +15,9 @@ def main():
                 words =f.read().split(" ")
                 for word in words:
                     if word in globalList:
-                        globalList['{}'.format(word)].append(str(count))
+                        globalList['{}'.format(word)].append(count)
                     else:
-                        globalList['{}'.format(word)]=list(str(count))
+                        globalList['{}'.format(word)].append(count)
                 count+=1
         except IOError as exc:
             if exc.errno != errno.EISDIR: # Do not fail if a directory is found, just ignore it.
@@ -27,6 +28,7 @@ def main():
         print(i," : ",globalList[i],"\n")
         w+=1
     print('w:',w)
+    print()
 
 if __name__ == '__main__':
     main()
