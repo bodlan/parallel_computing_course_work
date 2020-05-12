@@ -7,11 +7,13 @@ from collections import defaultdict
 import concurrent.futures
 
 
-Thread_count=2
+Thread_count=1
 globalList = defaultdict(list)
+path='C:\\Users\\bodlan\\Desktop\\aclImdb\\**\\**\\*.txt'
 def processDirectory(path,counter,thread_part):
+
     lock = threading.Lock()
-    List=defaultdict(list)
+    tmp_dict=defaultdict(list)
     files = glob.glob(path)# list of path names that matches pathname
     sliced=slice(int(thread_part*counter),int(thread_part*(counter+1)))
     for name in files[sliced]:  # 'file' is a builtin type, 'name' is a less-ambiguous variable name.
@@ -19,28 +21,27 @@ def processDirectory(path,counter,thread_part):
             with open(name) as f:
                 # print("name: ",name)
                 # setting variable count to txt number.
-                count = int(re.findall(r'\d+|$', name)[0])
+                count =name.split("\\",5)[-1]
                 # sys.stdout.write(f.read())
                 words = f.read().split(" ")
                 for word in words:
                     # clear words in text
                     word = re.findall(r'\w+|$', word)[0]
-                    if word in List:
-                        List['{}'.format(word)].append(count)
+                    if word in tmp_dict:
+                        tmp_dict['{}'.format(word)].append(count)
                     else:
-                        List['{}'.format(word)].append(count)
-                count += 1
+                        tmp_dict['{}'.format(word)].append(count)
         except IOError as exc:
             if exc.errno != errno.EISDIR:  # Do not fail if a directory is found, just ignore it.
                 raise  # Propagate other kinds of IOError.
         with lock:
-            for key, values in List.items():
+            for key, values in tmp_dict.items():
                 if key in globalList.keys():
-                    for i in List.get(key):
+                    for i in tmp_dict.get(key):
                         if i not in globalList.get(key):
                             globalList[key].append(i)
                 else:
-                    for i in List.get(key):
+                    for i in tmp_dict.get(key):
                         globalList[key].append(i)
 
 def printList(list):
@@ -72,18 +73,10 @@ def wordFrequency(list):
     for key, value in list.items():
         print(key, len([item for item in value if item]))
 def main():
-
-
-    tmp_dict=defaultdict(list)
-    pathList=['C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\pos\\*.txt',
-              'C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\neg\\*.txt',
-              'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\pos\\*.txt',
-              'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\neg\\*.txt',
-              'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\unsup\\*.txt']
-    thread_part=int(len(glob.glob(pathList[0]))/Thread_count)
+    thread_part=int(len(glob.glob(path))/Thread_count)
     start_time=time.time()
     with concurrent.futures.ThreadPoolExecutor(max_workers=Thread_count) as executor:
-        {executor.submit(processDirectory,pathList[0],counter,thread_part): counter for counter in range(Thread_count)}
+        {executor.submit(processDirectory,path,counter,thread_part): counter for counter in range(Thread_count)}
 
     end_time=time.time()
 
