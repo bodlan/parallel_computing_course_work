@@ -1,8 +1,11 @@
 import sys
 import glob
 import re
+import threading
 import errno
 from collections import defaultdict
+import concurrent.futures
+
 
 Thread_count=10
 
@@ -67,17 +70,19 @@ def main():
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\pos\\*.txt',
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\neg\\*.txt',
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\unsup\\*.txt']
-    thread_part=len(glob.glob(pathList[0]))/Thread_count
-    for counter in range(Thread_count):
-        tmp_dict=processDirectory(pathList[0],counter,thread_part)
-        for key, values in tmp_dict.items():
-            if key in globalList.keys():
-                for i in tmp_dict.get(key):
-                    if i not in globalList.get(key):
+    thread_part=int(len(glob.glob(pathList[0]))/Thread_count)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=Thread_count) as executor:
+        tmp={executor.submit(processDirectory,pathList[0],counter,thread_part): counter for counter in range(Thread_count)}
+        for f in concurrent.futures.as_completed(tmp):
+            tmp_dict=f.result()
+            for key, values in tmp_dict.items():
+                if key in globalList.keys():
+                    for i in tmp_dict.get(key):
+                        if i not in globalList.get(key):
+                            globalList[key].append(i)
+                else:
+                    for i in tmp_dict.get(key):
                         globalList[key].append(i)
-            else:
-                for i in tmp_dict.get(key):
-                    globalList[key].append(i)
 
 
     print("globalList starts:\n")
