@@ -3,11 +3,15 @@ import glob
 import re
 import errno
 from collections import defaultdict
-def processDirectory(path):
-    List=defaultdict(list)
-    files = glob.glob(path)  # list of path names that matches pathname
 
-    for name in files:  # 'file' is a builtin type, 'name' is a less-ambiguous variable name.
+Thread_count=10
+
+def processDirectory(path,counter,thread_part):
+    List=defaultdict(list)
+    files = glob.glob(path)# list of path names that matches pathname
+    sliced=slice(int(thread_part*counter),int(thread_part*(counter+1)))
+    print("sliced:",files[sliced])
+    for name in files[sliced]:  # 'file' is a builtin type, 'name' is a less-ambiguous variable name.
         try:
             with open(name) as f:
                 # print("name: ",name)
@@ -57,15 +61,21 @@ def wordFrequency(list):
     for key, value in list.items():
         print(key, len([item for item in value if item]))
 def main():
+    pathList=['C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\pos\\*.txt',
+              'C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\neg\\*.txt',
+              'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\pos\\*.txt',
+              'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\neg\\*.txt',
+              'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\unsup\\*.txt']
+    thread_part=len(glob.glob(pathList[0]))/Thread_count
+    for counter in range(Thread_count):
+        globalList=processDirectory(pathList[0],counter,thread_part)
 
-    path = 'C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\pos\\*.txt'
-    globalList=processDirectory(path)
+
     print("globalList starts:\n")
     printList(globalList)
-    wordFrequency(globalList)
-    listAppearance('If you are looking for that',globalList)
-
-
+    #wordFrequency(globalList)
+    #find combination of words in single file
+    # listAppearance('',globalList)
 
 if __name__ == '__main__':
     main()
