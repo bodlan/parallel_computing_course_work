@@ -10,7 +10,6 @@ def processDirectory(path,counter,thread_part):
     List=defaultdict(list)
     files = glob.glob(path)# list of path names that matches pathname
     sliced=slice(int(thread_part*counter),int(thread_part*(counter+1)))
-    print("sliced:",files[sliced])
     for name in files[sliced]:  # 'file' is a builtin type, 'name' is a less-ambiguous variable name.
         try:
             with open(name) as f:
@@ -61,6 +60,8 @@ def wordFrequency(list):
     for key, value in list.items():
         print(key, len([item for item in value if item]))
 def main():
+    globalList=defaultdict(list)
+    tmp_dict=defaultdict(list)
     pathList=['C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\pos\\*.txt',
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\neg\\*.txt',
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\pos\\*.txt',
@@ -68,7 +69,15 @@ def main():
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\unsup\\*.txt']
     thread_part=len(glob.glob(pathList[0]))/Thread_count
     for counter in range(Thread_count):
-        globalList=processDirectory(pathList[0],counter,thread_part)
+        tmp_dict=processDirectory(pathList[0],counter,thread_part)
+        for key, values in tmp_dict.items():
+            if key in globalList.keys():
+                for i in tmp_dict.get(key):
+                    if i not in globalList.get(key):
+                        globalList[key].append(i)
+            else:
+                for i in tmp_dict.get(key):
+                    globalList[key].append(i)
 
 
     print("globalList starts:\n")
