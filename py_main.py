@@ -1,4 +1,4 @@
-import sys
+import time
 import glob
 import re
 import threading
@@ -7,9 +7,10 @@ from collections import defaultdict
 import concurrent.futures
 
 
-Thread_count=10
-
+Thread_count=2
+globalList = defaultdict(list)
 def processDirectory(path,counter,thread_part):
+    lock = threading.Lock()
     List=defaultdict(list)
     files = glob.glob(path)# list of path names that matches pathname
     sliced=slice(int(thread_part*counter),int(thread_part*(counter+1)))
@@ -32,7 +33,15 @@ def processDirectory(path,counter,thread_part):
         except IOError as exc:
             if exc.errno != errno.EISDIR:  # Do not fail if a directory is found, just ignore it.
                 raise  # Propagate other kinds of IOError.
-    return List
+        with lock:
+            for key, values in List.items():
+                if key in globalList.keys():
+                    for i in List.get(key):
+                        if i not in globalList.get(key):
+                            globalList[key].append(i)
+                else:
+                    for i in List.get(key):
+                        globalList[key].append(i)
 
 def printList(list):
     w=0
@@ -63,8 +72,8 @@ def wordFrequency(list):
     for key, value in list.items():
         print(key, len([item for item in value if item]))
 def main():
-    lock=threading.Lock()
-    globalList=defaultdict(list)
+
+
     tmp_dict=defaultdict(list)
     pathList=['C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\pos\\*.txt',
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\test\\neg\\*.txt',
@@ -72,25 +81,16 @@ def main():
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\neg\\*.txt',
               'C:\\Users\\bodlan\\Desktop\\aclImdb\\train\\unsup\\*.txt']
     thread_part=int(len(glob.glob(pathList[0]))/Thread_count)
+    start_time=time.time()
     with concurrent.futures.ThreadPoolExecutor(max_workers=Thread_count) as executor:
-        tmp={executor.submit(processDirectory,pathList[0],counter,thread_part): counter for counter in range(Thread_count)}
-        for f in concurrent.futures.as_completed(tmp):
-            with lock:
-                print("locked!")
-            tmp_dict=f.result()
-            for key, values in tmp_dict.items():
-                if key in globalList.keys():
-                    for i in tmp_dict.get(key):
-                        if i not in globalList.get(key):
-                            globalList[key].append(i)
-                else:
-                    for i in tmp_dict.get(key):
-                        globalList[key].append(i)
-            print("unlocked")
+        {executor.submit(processDirectory,pathList[0],counter,thread_part): counter for counter in range(Thread_count)}
+
+    end_time=time.time()
 
 
     print("globalList starts:\n")
     printList(globalList)
+    print("time:", end_time-start_time)
     #wordFrequency(globalList)
     #find combination of words in single file
     # listAppearance('',globalList)
