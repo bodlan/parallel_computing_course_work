@@ -7,56 +7,38 @@ import time
 import glob
 import re
 import threading
-import errno
-import concurrent.futures
 from collections import defaultdict
+from multiprocessing import Process
 
 
-THREAD_COUNT = 2
-globalList = defaultdict(list)
+THREAD_COUNT = 4
+global_dictionary = defaultdict(list)
 
 
-def process_directory(folder_path, counter, thread_part):
+def process_directory(files, counter, thread_part):
     """
     Function processing given directory to find words in files
     Dictionary contain words of files in it
-    :param folder_path: path to your directories
+    :param files: path to your directories
     :param counter: used for parallel computing to track lower bound
     :param thread_part: used for parallel computing to track upper bound
     """
-    lock = threading.Lock()
-    tmp_dict = defaultdict(list)
+    start = time.time()
     # list of path names that matches pathname
-    files = glob.glob(folder_path)
+    print("indent:", threading.get_ident())
+
     for name in files[slice(int(thread_part*counter), int(thread_part*(counter+1)))]:
-        try:
-            with open(name) as file:
-                # print("name: ",name)
-                # setting variable count to txt number.
-                words = file.read().split(" ")
-                for word in words:
-                    # clear words in text
-                    word = re.findall(r'\w+|$', word)[0]
-                    if word in tmp_dict:
-                        tmp_dict['{}'.format(word)].append(name.split("\\", 5)[-1])
-                    else:
-                        tmp_dict['{}'.format(word)].append(name.split("\\", 5)[-1])
-        except IOError as exc:
-            # Do not fail if a directory is found, just ignore it.
-            if exc.errno != errno.EISDIR:
-                # Propagate other kinds of IOError.
-                raise
-        # locking other threads from modifying dictionary
-        # waits till thread finishes processing dictionary
-        with lock:
-            for key in tmp_dict.keys():
-                if key in globalList.keys():
-                    for i in tmp_dict.get(key):
-                        if i not in globalList.get(key):
-                            globalList[key].append(i)
-                else:
-                    for i in tmp_dict.get(key):
-                        globalList[key].append(i)
+        with open(name, encoding="utf-8") as file:
+            # setting variable count to txt number.
+            # print("name:",name, "with: ",threading.get_ident())
+            words = file.read().split(" ")
+            for word in words:
+                # clear words in text
+                word = re.findall(r'\w+|$', word)[0]
+                global_dictionary['{}'.format(word)].append(name.split("\\", 5)[-1])
+
+    end = time.time()-start
+    print("time in func:", end, 'with indent:', threading.get_ident())
 
 
 def print_list(words):
@@ -64,11 +46,12 @@ def print_list(words):
     Function prints dictionary for each key and value
     :param words: dictionary to print
     """
-    word_count = 0
-    for i in words:
-        print(i, " : ", words[i], "\n")
+    word_count, size = 0, 0
+    for key, value in words.items():
         word_count += 1
-    print("words:", word_count)
+        size += len([item for item in value if item])
+        # print(key,":",value)
+    print("words:", word_count, 'size:', size)
 
 
 def common(lst1, lst2):
@@ -119,16 +102,25 @@ def main():
     Main function of program which is processing dictionary
     Parallel computing in program starts here
     """
+
     folder_path = 'C:\\Users\\bodlan\\Desktop\\aclImdb\\**\\**\\*.txt'
-    thread_part = int(len(glob.glob(folder_path))/THREAD_COUNT)
+    thread_part = int((len(glob.glob(folder_path)))/THREAD_COUNT)
+    files = glob.glob(folder_path)
+    print("len:", len(glob.glob(folder_path)))
+    print("thread_part:", thread_part)
     start_time = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_COUNT) as executor:
-        for counter in range(THREAD_COUNT):
-            executor.submit(process_directory, folder_path, counter, thread_part)
+    thread_list = []
+    for i in range(THREAD_COUNT):
+        process = Process(target=process_directory, args=(files, i, thread_part))
+        process.start()
+        thread_list.append(process)
+    for i in thread_list:
+        i.join()
     end_time = time.time()
+    print("time:", end_time - start_time)
     print("globalList starts:\n")
-    print_list(globalList)
-    print("time:", end_time-start_time)
+    print_list(global_dictionary)
+
     # word_frequencies(globalList)
     # find combination of words in single file
     # list_appearance('', globalList)
